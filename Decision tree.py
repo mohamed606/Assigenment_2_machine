@@ -15,7 +15,23 @@ class Node:
         self.list_of_childes = []
 
 
-def create_tree(dataset):
+def create_tree(node):
+    l = []
+    for child in node.list_of_childes:
+        if child.entropy == 0:
+            continue
+        if len(l) != 0:
+            for n in l:
+                del child.dataset[n]
+        child.list_of_childes.append(get_best_node(child.dataset))
+        name = child.list_of_childes[0].name
+        l.append(name)
+    for child in node.list_of_childes:
+        l.extend(create_tree(child.list_of_childes[0]))
+    return l
+
+
+def get_best_node(dataset):
     columns = dataset.columns[1:]
     list_nodes = []
     first_entropy = calculate_entropy(dataset)
@@ -26,12 +42,13 @@ def create_tree(dataset):
         count = dataset[name].value_counts()
         parent_node.entropy = first_entropy
         for i in range(0, len(count)):
-            child_node = Node(count.keys()[i], dataset[dataset.get(name) == count.keys()[i]])
+            set = dataset[dataset.get(name) == count.keys()[i]]
+            del set[name]
+            child_node = Node(count.keys()[i], set)
             child_node.entropy = calculate_entropy(child_node.dataset)
             parent_node.list_of_childes.append(child_node)
         list_nodes.append(parent_node)
         gain = information_gain(parent_node)
-        print(gain)
         if max < gain:
             max = gain
             index = len(list_nodes) - 1
@@ -50,10 +67,14 @@ def replace_missing_votes(dataset):
 
 def calculate_entropy(dataset):
     count = dataset['output'].value_counts()
-    sum_of_count = count[0] + count[1]
-    positive = count[0] / sum_of_count
-    negative = count[1] / sum_of_count
-    return (-positive * numpy.log2(positive)) - (negative * numpy.log2(negative))
+    sum_of_count = 0
+    entropy = 0
+    for i in range(0, len(count)):
+        sum_of_count = count[i] + sum_of_count
+    for i in range(0, len(count)):
+        value = count[i] / sum_of_count
+        entropy = entropy - (value * numpy.log2(value))
+    return entropy
 
 
 def information_gain(dataset_parent, dataset_y, dataset_n):
@@ -75,8 +96,8 @@ def main():
         names.append("v" + str(i))
     dataset = pandas.read_csv("house-votes-84.data - Copy.csv", names=names)
     replace_missing_votes(dataset)
-    node = create_tree(dataset)
-
+    root = get_best_node(dataset)
+    create_tree(root)
 
 
 main()
