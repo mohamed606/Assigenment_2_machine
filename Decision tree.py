@@ -16,19 +16,15 @@ class Node:
 
 
 def create_tree(node):
-    l = []
     for child in node.list_of_childes:
         if child.entropy == 0:
             continue
-        if len(l) != 0:
-            for n in l:
-                del child.dataset[n]
-        child.list_of_childes.append(get_best_node(child.dataset))
-        name = child.list_of_childes[0].name
-        l.append(name)
-    for child in node.list_of_childes:
-        l.extend(create_tree(child.list_of_childes[0]))
-    return l
+        best_node = get_best_node(child.dataset)
+        if best_node is not None:
+            child.list_of_childes.append(best_node)
+            create_tree(child.list_of_childes[0])
+        else:
+            return
 
 
 def get_best_node(dataset):
@@ -52,6 +48,8 @@ def get_best_node(dataset):
         if max < gain:
             max = gain
             index = len(list_nodes) - 1
+    if index == -1:
+        return None
     return list_nodes[index]
 
 
@@ -90,14 +88,70 @@ def information_gain(node):
     return node.entropy + sum
 
 
+def test(tree, test_set):
+    counter = 0
+    for i in range(0, len(test_set)):
+        row = test_set.iloc[i]
+        predicate = do_test(tree, row)
+        if predicate == (row['output']):
+            counter = counter + 1
+    return (counter / len(test_set)) * 100
+
+
+def do_test(tree, row):
+    value_in_row = row[tree.name]
+    for child in tree.list_of_childes:
+        if child.name.__eq__(value_in_row):
+            if child.entropy == 0:
+                return child.dataset['output'].iloc[0]
+            else:
+                if len(child.list_of_childes) == 0:
+                    count = tree.dataset['output'].value_counts()
+                    if count['republican'] > count['democrat']:
+                        return 'republican'
+                    else:
+                        return 'democrat'
+                else:
+                    return do_test(child.list_of_childes[0], row)
+
+
 def main():
     names = ['output']
     for i in range(1, 17):
         names.append("v" + str(i))
     dataset = pandas.read_csv("house-votes-84.data - Copy.csv", names=names)
     replace_missing_votes(dataset)
-    root = get_best_node(dataset)
-    create_tree(root)
+    start = 0.3
+    max_of_accuracy = 0
+    min_of_accuracy = 0
+    mean_of_accuracy = 0
+    sum_of_accuracy = 0
+    max_set = 0
+    min_set = 0
+    for i in range(0, 5):
+        dataset = dataset.sample(frac=1).reset_index(drop=True)
+        training_set = dataset[:int(len(dataset) * start)]
+        testing_set = dataset[int(len(dataset) * start):]
+        testing_set.reset_index(drop=True, inplace=True)
+        root = get_best_node(training_set)
+        create_tree(root)
+        success_ratio = test(root, testing_set)
+        if i == 0:
+            min_of_accuracy = success_ratio
+            min_set = int(len(dataset) * start)
+        sum_of_accuracy = sum_of_accuracy + success_ratio
+        if success_ratio > max_of_accuracy:
+            max_of_accuracy = success_ratio
+            max_set = int(len(dataset) * start)
+        if success_ratio < min_of_accuracy:
+            min_of_accuracy = success_ratio
+            min_set = int(len(dataset) * start)
+        print(f"success ratio {success_ratio}%")
+        start = start + 0.1
+    mean_of_accuracy = sum_of_accuracy / 5
+    print(f"max accuracy {max_of_accuracy}% and training set size {max_set}")
+    print(f"min accuracy {min_of_accuracy}% and training set size {min_set}")
+    print(f"mean accuracy {mean_of_accuracy}%")
 
 
 main()
