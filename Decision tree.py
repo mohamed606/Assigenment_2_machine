@@ -27,6 +27,21 @@ def create_tree(node):
             return
 
 
+def get_tree_size_loop(root):
+    counter = 0
+    for child in root.list_of_childes:
+        if child.entropy != 0:
+            counter = counter + 1
+            if len(child.list_of_childes) == 0:
+                continue
+            counter = counter + get_tree_size(child.list_of_childes[0])
+    return counter
+
+
+def get_tree_size(root):
+    return 1 + get_tree_size_loop(root)
+
+
 def get_best_node(dataset):
     columns = dataset.columns[1:]
     list_nodes = []
@@ -109,8 +124,14 @@ def do_test(tree, row):
                     count = tree.dataset['output'].value_counts()
                     if count['republican'] > count['democrat']:
                         return 'republican'
-                    else:
+                    elif count['republican'] < count['democrat']:
                         return 'democrat'
+                    else:
+                        random_index = numpy.random.randint(0, 2)
+                        if random_index == 0:
+                            return 'republican'
+                        else:
+                            return 'democrat'
                 else:
                     return do_test(child.list_of_childes[0], row)
 
@@ -128,6 +149,10 @@ def main():
     sum_of_accuracy = 0
     max_set = 0
     min_set = 0
+    max_size = 0
+    min_size = 0
+    mean_of_size = 0
+    sum_of_size = 0
     for i in range(0, 5):
         dataset = dataset.sample(frac=1).reset_index(drop=True)
         training_set = dataset[:int(len(dataset) * start)]
@@ -135,10 +160,14 @@ def main():
         testing_set.reset_index(drop=True, inplace=True)
         root = get_best_node(training_set)
         create_tree(root)
+        tree_size = get_tree_size(root)
+        sum_of_size = sum_of_size + tree_size
+        print(f"tree size {tree_size}")
         success_ratio = test(root, testing_set)
         if i == 0:
             min_of_accuracy = success_ratio
             min_set = int(len(dataset) * start)
+            min_size = tree_size
         sum_of_accuracy = sum_of_accuracy + success_ratio
         if success_ratio > max_of_accuracy:
             max_of_accuracy = success_ratio
@@ -146,12 +175,20 @@ def main():
         if success_ratio < min_of_accuracy:
             min_of_accuracy = success_ratio
             min_set = int(len(dataset) * start)
+        if max_size < tree_size:
+            max_size = tree_size
+        if min_size > tree_size:
+            min_size = tree_size
         print(f"success ratio {success_ratio}%")
         start = start + 0.1
     mean_of_accuracy = sum_of_accuracy / 5
+    mean_of_size = sum_of_size / 5
     print(f"max accuracy {max_of_accuracy}% and training set size {max_set}")
     print(f"min accuracy {min_of_accuracy}% and training set size {min_set}")
     print(f"mean accuracy {mean_of_accuracy}%")
+    print(f"max tree size = {max_size}")
+    print(f"min tree size = {min_size}")
+    print(f"mean of tree size = {mean_of_size}")
 
 
 main()
