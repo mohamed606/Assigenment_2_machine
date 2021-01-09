@@ -90,11 +90,6 @@ def calculate_entropy(dataset):
     return entropy
 
 
-def information_gain(dataset_parent, dataset_y, dataset_n):
-    return calculate_entropy(dataset_parent) - (len(dataset_y) / len(dataset_parent)) * calculate_entropy(dataset_y) - (
-            len(dataset_n) / len(dataset_parent)) * calculate_entropy(dataset_n)
-
-
 def information_gain(node):
     sum = 0
     length_of_parent_dataset = len(node.dataset)
@@ -155,6 +150,7 @@ def main():
     sum_of_size = 0
     for i in range(0, 5):
         dataset = dataset.sample(frac=1).reset_index(drop=True)
+
         training_set = dataset[:int(len(dataset) * start)]
         testing_set = dataset[int(len(dataset) * start):]
         testing_set.reset_index(drop=True, inplace=True)
